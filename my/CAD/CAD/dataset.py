@@ -182,7 +182,7 @@ if __name__ == '__main__':
             bboxs = np.repeat(rotated_bbox[:, np.newaxis, :], windows.shape[0], axis=1)
             point = find_windows(cell_num, bboxs, windows)
 
-            out_dir = f'dataset/{file1}/{file2}'
+            out_dir = f'datasets/train_bboxes'
             if not os.path.exists(out_dir):
                 os.makedirs(out_dir)
 

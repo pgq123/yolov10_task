@@ -112,7 +112,8 @@ class BaseTrainer:
             self.args.save_dir = str(self.save_dir)
             yaml_save(self.save_dir / "args.yaml", vars(self.args))  # save run args
         self.last, self.best = self.wdir / "last.pt", self.wdir / "best.pt"  # checkpoint paths
-        self.save_period = self.args.save_period
+        # self.save_period = self.args.save_period
+        self.save_period = 25
 
         self.batch_size = self.args.batch
         self.epochs = self.args.epochs
@@ -295,16 +296,16 @@ class BaseTrainer:
                 self.testset, batch_size=batch_size if self.args.task == "obb" else batch_size * 2, rank=-1, mode="val"
             )
             self.validator = self.get_validator()
-            metric_keys = self.validator.metrics.keys + self.label_loss_items(prefix="val")
+            metric_keys = self.validator.metrics.keys + self.label_loss_items(prefix="val") # 指标名称
             self.metrics = dict(zip(metric_keys, [0] * len(metric_keys)))
-            self.ema = ModelEMA(self.model)
+            self.ema = ModelEMA(self.model)  # 指数移动平均, 用于模型融合
             if self.args.plots:
                 self.plot_training_labels()
 
         # Optimizer
         self.accumulate = max(round(self.args.nbs / self.batch_size), 1)  # accumulate loss before optimizing
         weight_decay = self.args.weight_decay * self.batch_size * self.accumulate / self.args.nbs  # scale weight_decay
-        iterations = math.ceil(len(self.train_loader.dataset) / max(self.batch_size, self.args.nbs)) * self.epochs
+        iterations = math.ceil(len(self.train_loader.dataset) / max(self.batch_size, self.args.nbs)) * self.epochs  # 总的迭代次数
         self.optimizer = self.build_optimizer(
             model=self.model,
             name=self.args.optimizer,
@@ -327,7 +328,7 @@ class BaseTrainer:
         self._setup_train(world_size)
 
         nb = len(self.train_loader)  # number of batches
-        nw = max(round(self.args.warmup_epochs * nb), 100) if self.args.warmup_epochs > 0 else -1  # warmup iterations
+        nw = max(round(self.args.warmup_epochs * nb), 100) if self.args.warmup_epochs > 0 else -1  # warmup iterations 计算预热阶段的迭代次数
         last_opt_step = -1
         self.epoch_time = None
         self.epoch_time_start = time.time()
@@ -378,12 +379,12 @@ class BaseTrainer:
                 # Forward
                 with torch.cuda.amp.autocast(self.amp):
                     batch = self.preprocess_batch(batch)
-                    self.loss, self.loss_items = self.model(batch)
+                    self.loss, self.loss_items = self.model(batch)  # loss_item当前批次的损失
                     if RANK != -1:
                         self.loss *= world_size
                     self.tloss = (
                         (self.tloss * i + self.loss_items) / (i + 1) if self.tloss is not None else self.loss_items
-                    )
+                    )  # update mean losses
 
                 # Backward
                 self.scaler.scale(self.loss).backward()
@@ -418,7 +419,7 @@ class BaseTrainer:
 
                 self.run_callbacks("on_train_batch_end")
 
-            self.lr = {f"lr/pg{ir}": x["lr"] for ir, x in enumerate(self.optimizer.param_groups)}  # for loggers
+            self.lr = {f"lr/pg{ir}": x["lr"] for ir, x in enumerate(self.optimizer.param_groups)}  # for loggers 记录优化器参数的学习率
             self.run_callbacks("on_train_epoch_end")
             if RANK in (-1, 0):
                 final_epoch = epoch + 1 == self.epochs
@@ -433,8 +434,6 @@ class BaseTrainer:
                 if self.args.time:
                     self.stop |= (time.time() - self.train_time_start) > (self.args.time * 3600)
 
-                # Save model
-                if self.args.save or final_epoch:
                     self.save_model()
                     self.run_callbacks("on_model_save")
 

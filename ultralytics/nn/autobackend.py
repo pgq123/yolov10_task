@@ -121,9 +121,9 @@ class AutoBackend(nn.Module):
             paddle,
             ncnn,
             triton,
-        ) = self._model_type(w)
-        fp16 &= pt or jit or onnx or xml or engine or nn_module or triton  # FP16
-        nhwc = coreml or saved_model or pb or tflite or edgetpu  # BHWC formats (vs torch BCWH)
+        ) = self._model_type(w) # 判断模型类型，确定模型格式(pt, jit, onnx等)
+        fp16 &= pt or jit or onnx or xml or engine or nn_module or triton  # 如果模型类型是右边中的一种则启用FP16
+        nhwc = coreml or saved_model or pb or tflite or edgetpu  # BHWC formats (vs torch BCWH) 确定图片是否是BHWC格式
         stride = 32  # default stride
         model, metadata = None, None
 

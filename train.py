@@ -18,7 +18,7 @@ if __name__ == '__main__':
     model.train(data=data_yaml_path,
                 cache=False,
                 imgsz=1024,
-                epochs=150,
+                epochs=500,
                 batch=8,
                 device='0',
                 )

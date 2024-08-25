@@ -269,7 +269,7 @@ class BaseModel(nn.Module):
             preds (torch.Tensor | List[torch.Tensor]): Predictions.
         """
         if not hasattr(self, "criterion"):
-            self.criterion = self.init_criterion()
+            self.criterion = self.init_criterion() # 跳到YoloV10DetectionModel的init_criterion
 
         preds = self.forward(batch["img"]) if preds is None else preds
         return self.criterion(preds, batch)
